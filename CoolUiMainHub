@@ -1,13 +1,22 @@
-Print("CoolUI is ready to game!")
 local plr = game.Players.LocalPlayer
 local plrUI = plr.PlayerGui
 
-local character = plr.Character
-local humanoid = character:FindFirstChildOfClass("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
+local character
+local humanoid
+local rootPart
 
-local StarterPlayer = game:GetService("StarterPlayer")
-StarterPlayer.CharacterUseJumpPower = true
+local function UpdateCharacter(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	rootPart = char:WaitForChild("HumanoidRootPart")
+	humanoid.UseJumpPower = true
+end
+
+UpdateCharacter(plr.Character or plr.CharacterAdded:Wait())
+
+plr.CharacterAdded:Connect(UpdateCharacter)
+
+humanoid.UseJumpPower = true
 
 local starterGui = game:GetService("StarterGui")
 
@@ -38,6 +47,8 @@ Holder.Position = UDim2.new(0, 0, 0, 0)
 Holder.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Holder.BorderSizePixel = 0
 
+Holder.Active = true
+
 -- Main button creation
 local function CreateNewButton(Config : {}, Callback)
 	local Button = Instance.new("TextButton", Config.Parent)
@@ -51,8 +62,10 @@ local function CreateNewButton(Config : {}, Callback)
 	Button.TextStrokeTransparency = 0
 	Button.BorderSizePixel = 0
 
-	Connections[Button] = Button.MouseButton1Click:Connect(function()
-		Callback()
+	task.spawn(function()
+		Connections[Button] = Button.MouseButton1Click:Connect(function()
+			Callback(Button)
+		end)
 	end)
 	
 	return Button
@@ -70,13 +83,15 @@ local function CreateTextBox(Config : {}, Callback)
 	Button.TextStrokeTransparency = 0
 	Button.BorderSizePixel = 0
 	Button.PlaceholderText = Config.PlaceText
-
-	Connections[Button] =  Button.FocusLost:Connect(function(enterPressed, _inp)
-		if enterPressed then
-			Callback(Button.Text)
-		else
-			Button.Text = ""
-		end
+	
+	task.spawn(function()
+		Connections[Button] =  Button.FocusLost:Connect(function(enterPressed, _inp)
+			if enterPressed then
+				Callback(Button.Text, Button)
+			else
+				Button.Text = ""
+			end
+		end)
 	end)
 
 	return Button
@@ -88,6 +103,8 @@ MainFrame.Size = UDim2.new(1.001, 0,10.604, 0)
 MainFrame.Position = UDim2.new(-0.001, 0,0.992, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(29, 29, 29)
 MainFrame.BorderSizePixel = 0
+
+MainFrame.Active = true
 
 local CoolUiHub = Instance.new("TextLabel", Holder)
 CoolUiHub.BackgroundTransparency = 1
@@ -210,6 +227,10 @@ local WalkSpeedConn
 local WalkSpeed = 24
 local JumpPower = 50
 local AutoRotate = true
+local can = false
+
+local JPOn = true
+local WKOn = true
 
 local function SetWalkSpeed()
 	starterGui:SetCore("SendNotification", {
@@ -223,11 +244,20 @@ local function SetWalkSpeed()
 		WalkSpeedConn:Disconnect()
 	end
 	
+	can = true
+	
 	task.spawn(function()
 		WalkSpeedConn = game:GetService("RunService").RenderStepped:Connect(function()
-			humanoid.WalkSpeed = WalkSpeed
-			humanoid.JumpPower = JumpPower
+			if not can then return end
 			humanoid.AutoRotate = AutoRotate
+			
+			if JPOn then
+				humanoid.JumpPower = JumpPower
+			end
+			
+			if WKOn then
+				humanoid.WalkSpeed = WalkSpeed
+			end
 		end)
 	end)
 end
@@ -247,7 +277,7 @@ local SuperHuman = CreateNewButton(
 	end
 )
 
-local SetWalkSpeed = CreateTextBox(
+local t = CreateTextBox(
 	{
 		Size = UDim2.new(0.917, 0,0.099, 0),
 		Position = UDim2.new(0.952, 0,0.109,0),
@@ -266,7 +296,7 @@ local SetWalkSpeed = CreateTextBox(
 )
 
 -- does not work idk
-local SetJumpPower = CreateTextBox(
+local t = CreateTextBox(
 	{
 		Size = UDim2.new(0.917, 0,0.099, 0),
 		Position = UDim2.new(0.952, 0,0.109,0),
@@ -281,6 +311,54 @@ local SetJumpPower = CreateTextBox(
 		if typeof(number) ~= "number" then return end
 
 		JumpPower = number
+	end
+)
+
+local EnableJ = CreateTextBox(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		PlaceText = "EnableJumpPower : ".. tostring(JPOn),
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Config
+	},
+
+	function(text, button)
+		local bool = string.lower(tostring(text))
+		
+		if bool == "true" then
+			JPOn = true
+		else
+			JPOn = false
+		end
+		
+		button.PlaceholderText = "EnableJumpPower : ".. tostring(JPOn)
+
+	end
+)
+
+local EnableW = CreateTextBox(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		PlaceText = "EnableWalkSpeed : ".. tostring(WKOn),
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Config
+	},
+
+	function(text, button)
+		local bool = string.lower(tostring(text))
+
+		if bool == "true" then
+			WKOn = true
+		else
+			WKOn = false
+		end
+		
+		button.PlaceholderText = "EnableWalkSpeed : ".. tostring(JPOn)
+
 	end
 )
 
@@ -346,7 +424,7 @@ local SetDistance = CreateTextBox(
 	end
 )
 
-local TSBDASHON
+local TSBDASHON = false
 local TSBCONN
 local Range = 40
 
@@ -368,26 +446,51 @@ local function TSBDASH()
 			if gameProcessed then return end
 
 			if Input.KeyCode == Enum.KeyCode.X then
+				local Event = game:GetService("Players").LocalPlayer.Character:FindFirstChild("Communicate")
+				if Event then
+					Event:FireServer(
+						{
+							Goal = "KeyRelease",
+							Key = Enum.KeyCode.Q
+						}
+					)
+				end
+				
 				task.spawn(function()
 					for i = 1, 10 do
-						local AlreadyEnemy
+						can = false
+						local closestRoot
+						local closestDistance = Range
+						
+						humanoid.AutoRotate = false
 
-						for i, v in pairs(workspace:GetDescendants()) do
-							if v.Parent:IsA("Model") and v.Parent:FindFirstChild("Humanoid") then
-								if AlreadyEnemy then continue end
-								AlreadyEnemy = v.Parent
-								local enemyRoot = v.Parent:FindFirstChild("HumanoidRootPart")
-								if enemyRoot then
+						for _, model in ipairs(workspace:GetChildren()) do
+							if model:IsA("Model") and model ~= character then
+								local enemyHumanoid = model:FindFirstChildOfClass("Humanoid")
+								local enemyRoot = model:FindFirstChild("HumanoidRootPart")
+
+								if enemyHumanoid and enemyRoot and enemyHumanoid.Health > 0 then
 									local distance = (rootPart.Position - enemyRoot.Position).Magnitude
-									if distance <= Range then
-										-- Keeps your current position, but rotates to face enemyRoot
-										rootPart.CFrame = CFrame.lookAt(rootPart.Position, enemyRoot.Position)
+
+									if distance <= closestDistance then
+										closestDistance = distance
+										closestRoot = enemyRoot
 									end
 								end
 							end
 						end
+
+						if closestRoot then
+							rootPart.CFrame = closestRoot.CFrame
+						end
 						
 						task.wait(.1)
+						
+						humanoid.AutoRotate = true
+						
+						if WalkSpeedConn then
+							can = true
+						end
 					end
 				end)
 			end
@@ -407,6 +510,53 @@ local TSBDASHB = CreateNewButton(
 
 	function()
 		TSBDASH()
+	end
+)
+
+local INFYEILD = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(255, 0, 251),
+		Text = "INFYEILD",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+	end
+)
+
+local Explorer = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(0, 255, 60),
+		Text = "Explorer",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/Universal/BypassedDarkDexV3.lua", true))()
+	end
+)
+
+local RELAUNCH = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(0, 221, 255),
+		Text = "RELAUNCH",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		loadstring(game:HttpGet(
+			"https://raw.githubusercontent.com/romeocoolguy011-prog/CoolGHub/refs/heads/main/CoolUiMainHub"
+		))()
 	end
 )
 
