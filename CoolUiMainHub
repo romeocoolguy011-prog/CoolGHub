@@ -704,7 +704,7 @@ RunService.RenderStepped:Connect(function()
 
 				-- 4. Inject artificial input movement directly into the engine handler
 				pcall(function()
-					UserInputService.MouseDeltaSensitivity = sensitivity
+					UserInputService.MouseDeltaSensitivity = sensitivity * 10
 					debug.setconstant(2, 1, moveX) 
 				end)
 
