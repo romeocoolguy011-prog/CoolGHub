@@ -229,8 +229,8 @@ local JumpPower = 50
 local AutoRotate = true
 local can = false
 
-local JPOn = false
-local WKOn = false
+local JPOn = true
+local WKOn = true
 
 local function SetWalkSpeed()
 	starterGui:SetCore("SendNotification", {
