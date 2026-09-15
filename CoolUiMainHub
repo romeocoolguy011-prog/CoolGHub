@@ -498,21 +498,6 @@ local function TSBDASH()
 	end
 end
 
-local TSBDASHB = CreateNewButton(
-	{
-		Size = UDim2.new(0.917, 0,0.099, 0),
-		Position = UDim2.new(0.952, 0,0.109,0),
-		Color = Color3.fromRGB(115, 0, 255),
-		Text = "Tsb loop dash (X)",
-		TextColor = Color3.fromRGB(241, 134, 255),
-		Parent = ButtonList
-	},
-
-	function()
-		TSBDASH()
-	end
-)
-
 local INFYEILD = CreateNewButton(
 	{
 		Size = UDim2.new(0.917, 0,0.099, 0),
@@ -603,7 +588,6 @@ frame.InputBegan:Connect(function(input)
 		end)
 	end
 end)
-
 -- Listens globally for screen cursor movements while dragging is active
 UserInputService.InputChanged:Connect(function(input)
 	if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
@@ -621,3 +605,327 @@ UserInputService.InputChanged:Connect(function(input)
 		)
 	end
 end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local UserGameSettings = UserSettings():GetService("UserGameSettings")
+
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- CONFIGURATION
+local FOV_RADIUS = 150 -- The radius of your aimbot zone in pixels
+local TOGGLE_KEY = Enum.KeyCode.LeftAlt-- Middle-click to toggle ON/OFF
+local SMOOTHNESS = 0.25 -- Lower = smoother/slower tracking (0.01 to 1)
+
+-- Shared Variables (Scope-lifted out of the button constructor)
+local aimbotEnabled = false
+local fovCircle = nil
+local uiStroke = nil
+
+-- Toggle logic: Swaps between true and false on every press
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	-- Ignore inputs typed into chat or menus
+	if gameProcessed then return end
+
+	if input.UserInputType == TOGGLE_KEY or input.KeyCode == TOGGLE_KEY then
+		aimbotEnabled = not aimbotEnabled -- This flips true to false, or false to true
+
+		-- Visual cue: Turn the circle Green when ON, and Red when OFF (only if UI has been spawned)
+		if uiStroke then
+			if aimbotEnabled then
+				uiStroke.Color = Color3.fromRGB(0, 255, 0) -- Green = Active
+			else
+				uiStroke.Color = Color3.fromRGB(255, 0, 0) -- Red = Disabled
+			end
+		end
+	end
+end)
+
+-- Find the closest valid character inside the FOV circle
+local function getClosestPlayerInFOV()
+	local closestPlayer = nil
+	local shortestDistance = math.huge
+	local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and player.Character then
+			local char = player.Character
+			local humanoid = char:FindFirstChildOfClass("Humanoid")
+			local head = char:FindFirstChild("Head")
+
+			-- Ensure the player is alive and has a Head
+			if humanoid and humanoid.Health > 0 and head then
+				-- Convert the character's head position to 2D screen coordinates
+				local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+
+				if onScreen then
+					local playerCoord = Vector2.new(screenPos.X, screenPos.Y)
+					local distanceFromCenter = (playerCoord - screenCenter).Magnitude
+
+					-- Check if they are inside our target crosshair zone
+					if distanceFromCenter <= FOV_RADIUS then
+						-- Calculate their actual 3D distance to see who is closest to you
+						local characterDistance = (head.Position - camera.CFrame.Position).Magnitude
+
+						if characterDistance < shortestDistance then
+							shortestDistance = characterDistance
+							closestPlayer = head
+						end
+					end
+				end
+			end
+		end
+	end
+
+	return closestPlayer
+end
+
+-- Run every frame right before rendering to adjust camera angles via artificial mouse delta
+RunService.RenderStepped:Connect(function()
+	if aimbotEnabled then
+		local targetHead = getClosestPlayerInFOV()
+
+		if targetHead then
+			-- 1. Convert target position to screen pixel coordinates
+			local screenPos, onScreen = camera:WorldToViewportPoint(targetHead.Position)
+
+			if onScreen then
+				local screenCenter = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+
+				-- 2. Find the pixel offset from your crosshair to the target head
+				local offset = Vector2.new(screenPos.X - screenCenter.X, screenPos.Y - screenCenter.Y)
+
+				-- 3. Factor in the player's in-game camera sensitivity setting so tracking speeds remain consistent
+				local sensitivity = UserGameSettings.MouseSensitivity
+				local moveX = (offset.X / sensitivity) * SMOOTHNESS
+				local moveY = (offset.Y / sensitivity) * SMOOTHNESS
+
+				-- 4. Inject artificial input movement directly into the engine handler
+				pcall(function()
+					UserInputService.MouseDeltaSensitivity = sensitivity
+					debug.setconstant(2, 1, moveX) 
+				end)
+
+				-- Fallback camera rotation construction logic if environment permissions restrict debugging hooks
+				local lookAtCFrame = CFrame.lookAt(camera.CFrame.Position, targetHead.Position)
+				camera.CFrame = camera.CFrame:Lerp(lookAtCFrame, SMOOTHNESS)
+			end
+		end
+	end
+end)
+
+-- CLEAN INTERFACE DEPLOYMENT BUTTON
+local AIMBOT = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0, 0.099, 0),
+		Position = UDim2.new(0.952, 0, 0.109, 0),
+		Color = Color3.fromRGB(115, 0, 255),
+		Text = "AIMBOT (ALT)",
+		TextColor = Color3.fromRGB(241, 134, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		-- Prevent spawning duplicate overlays if already active
+		if localPlayer.PlayerGui:FindFirstChild("AimbotZone") then 
+			localPlayer.PlayerGui:FindFirstChild("AimbotZone"):Destroy()
+		end
+
+		local screenGui = Instance.new("ScreenGui")
+		screenGui.Name = "AimbotZone"
+		screenGui.ResetOnSpawn = false
+		screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+		fovCircle = Instance.new("Frame")
+		fovCircle.Name = "FOVCircle"
+		fovCircle.AnchorPoint = Vector2.new(0.5, 0.5)
+		fovCircle.Position = UDim2.new(0.5, 0, 0.5, 0)
+		fovCircle.Size = UDim2.new(0, FOV_RADIUS * 2, 0, FOV_RADIUS * 2)
+		fovCircle.BackgroundTransparency = 1
+		fovCircle.BorderSizePixel = 0
+		fovCircle.Parent = screenGui
+
+		local uiCorner = Instance.new("UICorner")
+		uiCorner.CornerRadius = UDim.new(0.5, 0)
+		uiCorner.Parent = fovCircle
+
+		uiStroke = Instance.new("UIStroke")
+		uiStroke.Color = aimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+		uiStroke.Thickness = 1
+		uiStroke.Parent = fovCircle
+	end
+)
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local localPlayer = Players.LocalPlayer
+
+-- CONFIGURATION & STATE MANAGERS
+local TOGGLE_KEY = Enum.KeyCode.L -- Keyboard hotkey
+local espActive = false           -- Tracking toggle status
+local activeESPObjects = {}       -- Holds BillboardGuis and Highlights for wiping
+local espConnections = {}         -- Holds listeners for active characters
+
+-- Function to create and attach the health UI and body highlight to a character
+local function createHealthUI(character)
+	if not espActive then return end
+	if character == localPlayer.Character then return end
+
+	-- Look for the Humanoid and Head parts safely
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	local head = character:WaitForChild("Head", 10)
+	if not humanoid or not head then return end
+
+	-- Avoid stacking duplicates if already highlighted
+	if head:FindFirstChild("ESP_HealthUI") or character:FindFirstChild("ESP_Highlight") then return end
+
+	-- 1. Create the Full-Body Wallhack Silhouette (Highlight)
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ESP_Highlight"
+	highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red fill
+	highlight.FillTransparency = 0.5 -- See-through body fill
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255) -- White outline
+	highlight.OutlineTransparency = 0
+	highlight.Adornee = character
+	highlight.Parent = character
+	table.insert(activeESPObjects, highlight)
+
+	-- 2. Create the BillboardGui (The container that floats over the character)
+	local billboardGui = Instance.new("BillboardGui")
+	billboardGui.Name = "ESP_HealthUI"
+	billboardGui.Size = UDim2.new(0, 100, 0, 15) -- Size of the health bar
+	billboardGui.StudsOffset = Vector3.new(0, 2.5, 0) -- Position it above their head
+	billboardGui.AlwaysOnTop = true -- THIS MAKES IT SHOW THROUGH WALLS
+	billboardGui.ResetOnSpawn = false
+
+	-- 3. Create the Background Frame (The empty/red bar slot)
+	local backgroundFrame = Instance.new("Frame")
+	backgroundFrame.Name = "Background"
+	backgroundFrame.Size = UDim2.new(1, 0, 1, 0)
+	backgroundFrame.BackgroundColor3 = Color3.fromRGB(150, 0, 0) -- Dark Red
+	backgroundFrame.BorderSizePixel = 1
+	backgroundFrame.Parent = billboardGui
+
+	-- 4. Create the Fill Frame (The green bar that shrinks/grows)
+	local fillFrame = Instance.new("Frame")
+	fillFrame.Name = "Fill"
+	fillFrame.Size = UDim2.new(math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1), 0, 1, 0)
+	fillFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- Bright Green
+	fillFrame.BorderSizePixel = 0
+	fillFrame.Parent = backgroundFrame
+
+	-- 5. Create a Text Label to show raw numbers (e.g., "100/100")
+	local textLabel = Instance.new("TextLabel")
+	textLabel.Name = "HealthText"
+	textLabel.Size = UDim2.new(1, 0, 1, 0)
+	textLabel.BackgroundTransparency = 1
+	textLabel.Text = math.floor(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth)
+	textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	textLabel.TextSize = 10
+	textLabel.Font = Enum.Font.SourceSansBold
+	textLabel.Parent = backgroundFrame
+
+	-- Function to dynamically update the health bar size and text
+	local function updateHealth()
+		local healthRatio = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
+		fillFrame.Size = UDim2.new(healthRatio, 0, 1, 0)
+		textLabel.Text = math.floor(humanoid.Health) .. " / " .. math.floor(humanoid.MaxHealth)
+	end
+
+	-- Listen for health changes
+	local healthConnection = humanoid:GetPropertyChangedSignal("Health"):Connect(updateHealth)
+	local maxHealthConnection = humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(updateHealth)
+
+	-- Clean up events, tracking UI, and highlight silhouettes if the player dies
+	humanoid.Died:Connect(function()
+		healthConnection:Disconnect()
+		maxHealthConnection:Disconnect()
+		billboardGui:Destroy()
+		highlight:Destroy()
+	end)
+
+	-- Parent the UI to the enemy's head
+	billboardGui.Adornee = head
+	billboardGui.Parent = head
+	table.insert(activeESPObjects, billboardGui)
+end
+
+-- Central Execution Wrapper to turn state ON or OFF cleanly
+local function toggleESP(forcedState, buttonInstance)
+	if forcedState ~= nil then
+		espActive = forcedState
+	else
+		espActive = not espActive
+	end
+
+	-- Update Hub Menu Visual Aesthetics if a button was parsed through
+	if buttonInstance then
+		buttonInstance.Text = espActive and "ESP: ACTIVE" or "ESP (L)"
+		buttonInstance.BackgroundColor3 = espActive and Color3.fromRGB(40, 150, 40) or Color3.fromRGB(115, 0, 255)
+	end
+
+	if not espActive then
+		-- Turn Off: Purge existing UI overlay and structural outline highlights
+		for _, instance in ipairs(activeESPObjects) do
+			if instance and instance.Parent then
+				instance:Destroy()
+			end
+		end
+		activeESPObjects = {}
+	else
+		-- Turn On: Instantiate elements for everyone currently loaded in
+		for _, player in ipairs(Players:GetPlayers()) do
+			if player ~= localPlayer and player.Character then
+				task.spawn(createHealthUI, player.Character)
+			end
+		end
+	end
+end
+
+-- Monitor players entering the match or respawning
+local function onPlayerAdded(player)
+	if player == localPlayer then return end
+
+	player.CharacterAdded:Connect(function(character)
+		if espActive then
+			createHealthUI(character)
+		end
+	end)
+
+	if player.Character and espActive then
+		createHealthUI(player.Character)
+	end
+end
+
+-- Bind internal global player listing listeners
+for _, player in ipairs(Players:GetPlayers()) do
+	onPlayerAdded(player)
+end
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- KEYBOARD HOTKEY LISTENER [L]
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end -- Skip if typing in chat
+	if input.KeyCode == TOGGLE_KEY then
+		-- Update state (Will update menu buttons if they share the tag name)
+		local hubButton = localPlayer.PlayerGui:FindFirstChild("ESP (L)", true)
+		toggleESP(nil, hubButton)
+	end
+end)
+
+-- CLEAN INTERFACE DEPLOYMENT BUTTON FOR THE HUB
+local AIMBOT = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0, 0.099, 0),
+		Position = UDim2.new(0.952, 0, 0.109, 0),
+		Color = Color3.fromRGB(115, 0, 255),
+		Text = "ESP (L)",
+		TextColor = Color3.fromRGB(241, 134, 255),
+		Parent = ButtonList
+	},
+
+	function(self)
+		toggleESP(nil, self)
+	end
+)
