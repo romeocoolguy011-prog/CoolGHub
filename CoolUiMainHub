@@ -1,1 +1,473 @@
-print("CoolUi is ready!")
+Print("CoolUI is ready to game!")
+local plr = game.Players.LocalPlayer
+local plrUI = plr.PlayerGui
+
+local character = plr.Character
+local humanoid = character:FindFirstChildOfClass("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+local StarterPlayer = game:GetService("StarterPlayer")
+StarterPlayer.CharacterUseJumpPower = true
+
+local starterGui = game:GetService("StarterGui")
+
+if plrUI:FindFirstChild("CoolUI") then
+	plrUI:FindFirstChild("CoolUI"):Destroy()
+end
+
+local Connections = {}
+
+local function DisconnectAll()
+	for i, v in pairs(Connections) do
+		if v and typeof(v) == "RBXScriptConnection" then
+			v:Disconnect()
+		end
+	end
+end
+
+local Screen = Instance.new("ScreenGui", plrUI)
+Screen.Name = "CoolUI"
+Screen.Enabled = true
+Screen.IgnoreGuiInset = true
+Screen.ResetOnSpawn = false
+
+-- MainFrame
+local Holder = Instance.new("Frame", Screen)
+Holder.Size = UDim2.new(0.436, 0,0.033, 0)
+Holder.Position = UDim2.new(0, 0, 0, 0)
+Holder.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Holder.BorderSizePixel = 0
+
+-- Main button creation
+local function CreateNewButton(Config : {}, Callback)
+	local Button = Instance.new("TextButton", Config.Parent)
+	Button.Size = Config.Size
+	Button.Position = Config.Position
+	Button.BackgroundColor3 = Config.Color
+	Button.Text = Config.Text
+	Button.TextColor3 = Config.TextColor
+	Button.Font = Enum.Font.SourceSansBold
+	Button.TextScaled = true
+	Button.TextStrokeTransparency = 0
+	Button.BorderSizePixel = 0
+
+	Connections[Button] = Button.MouseButton1Click:Connect(function()
+		Callback()
+	end)
+	
+	return Button
+end
+
+local function CreateTextBox(Config : {}, Callback)
+	local Button = Instance.new("TextBox", Config.Parent)
+	Button.Size = Config.Size
+	Button.Position = Config.Position
+	Button.BackgroundColor3 = Config.Color
+	Button.Text = Config.Text or ""
+	Button.TextColor3 = Config.TextColor
+	Button.Font = Enum.Font.SourceSansBold
+	Button.TextScaled = true
+	Button.TextStrokeTransparency = 0
+	Button.BorderSizePixel = 0
+	Button.PlaceholderText = Config.PlaceText
+
+	Connections[Button] =  Button.FocusLost:Connect(function(enterPressed, _inp)
+		if enterPressed then
+			Callback(Button.Text)
+		else
+			Button.Text = ""
+		end
+	end)
+
+	return Button
+end
+
+-- MainFrame
+local MainFrame = Instance.new("Frame", Holder)
+MainFrame.Size = UDim2.new(1.001, 0,10.604, 0)
+MainFrame.Position = UDim2.new(-0.001, 0,0.992, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(29, 29, 29)
+MainFrame.BorderSizePixel = 0
+
+local CoolUiHub = Instance.new("TextLabel", Holder)
+CoolUiHub.BackgroundTransparency = 1
+CoolUiHub.Text = "CoolUi Hub by wacky"
+CoolUiHub.TextStrokeTransparency = 0
+CoolUiHub.TextScaled = true
+CoolUiHub.Size = UDim2.new(0.939, 0,0.978, 0)
+CoolUiHub.Position = UDim2.new(0, 0,0, 0)
+CoolUiHub.TextXAlignment = Enum.TextXAlignment.Left
+CoolUiHub.TextColor3 = Color3.fromRGB(255, 255, 255)
+CoolUiHub.BorderSizePixel = 0
+
+-- Names and bases
+local ExitButton = CreateNewButton(
+	{
+		Size = UDim2.new(0.037, 0,0.724, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(255, 0, 0),
+		Text = "X",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Holder
+	},
+
+	function()
+		Screen:Destroy()
+		DisconnectAll()
+	end
+)
+
+local MinimizeButton = CreateNewButton(
+	{
+		Size = UDim2.new(0.037, 0,0.724, 0),
+		Position = UDim2.new(0.902, 0,0.109, 0),
+		Color = Color3.fromRGB(27, 27, 27),
+		Text = "-",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Holder
+	},
+
+	function()
+		MainFrame.Visible = not MainFrame.Visible
+	end
+)
+
+-- Button list
+local ButtonList = Instance.new("Frame", MainFrame)
+ButtonList.Size = UDim2.new(0.245, 0,1.002, 0)
+ButtonList.Position = UDim2.new(0.005, 0,-0.002, 0)
+ButtonList.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+ButtonList.BorderSizePixel = 0
+
+local UiListLayout = Instance.new("UIListLayout", ButtonList)
+UiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UiListLayout.Padding = UDim.new(0, 0.01)
+UiListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+-- Config
+local Config = Instance.new("Frame", MainFrame)
+Config.Size = UDim2.new(0.76, 0,1.001, 0)
+Config.Position = UDim2.new(0.25, 0,0, 0)
+Config.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Config.BorderSizePixel = 0
+Config.BackgroundTransparency = 1
+
+local UiGrid = Instance.new("UIGridLayout", Config)
+UiGrid.FillDirection = Enum.FillDirection.Vertical
+UiGrid.CellSize = UDim2.new(0.326, 0,0.119, 0)
+
+-- CODING AREA FOR NEW BUTTONS AND STUFF
+
+-- Main (Output area)
+--[[local OutputScreen = Instance.new("TextBox", MainFrame)
+OutputScreen.Size = UDim2.new(3.329, 0,8.934, 0)
+OutputScreen.Position = UDim2.new(1.043, 0,0, 0)
+OutputScreen.BackgroundColor3 = Color3.fromRGB(9, 9, 9)
+OutputScreen.BorderSizePixel = 0
+OutputScreen.PlaceholderText = "Enter text here"
+OutputScreen.TextStrokeTransparency = 0
+OutputScreen.TextScaled = false
+OutputScreen.TextWrapped = true
+OutputScreen.TextSize = 24
+OutputScreen.TextXAlignment = Enum.TextXAlignment.Left
+OutputScreen.TextYAlignment = Enum.TextYAlignment.Top
+OutputScreen.TextColor3 = Color3.fromRGB(255, 255, 255)
+
+local RunButton = CreateNewButton(
+	{
+		Size = UDim2.new(1.045, 0,8.687, 0),
+		Position = UDim2.new(3.321, 0,1.413, 0),
+		Color = Color3.fromRGB(36, 61, 36),
+		Text = "Run",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+
+	end
+)
+
+local MainButton = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		Text = "Main",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		OutputScreen.Visible = true
+	end
+	
+RunButton.Parent = MainButton
+OutputScreen.Parent = MainButton
+)]]
+
+local WalkSpeedConn
+local WalkSpeed = 24
+local JumpPower = 50
+local AutoRotate = true
+
+local function SetWalkSpeed()
+	starterGui:SetCore("SendNotification", {
+		Title = "CoolHub",
+		Text = "SuperHuman is Active!",
+		Icon = "rbxassetid://132917596970416", -- Replace with your image asset ID
+		Duration = 2 -- Duration in seconds
+	})
+	
+	if WalkSpeedConn then
+		WalkSpeedConn:Disconnect()
+	end
+	
+	task.spawn(function()
+		WalkSpeedConn = game:GetService("RunService").RenderStepped:Connect(function()
+			humanoid.WalkSpeed = WalkSpeed
+			humanoid.JumpPower = JumpPower
+			humanoid.AutoRotate = AutoRotate
+		end)
+	end)
+end
+
+local SuperHuman = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		Text = "SuperHuman",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		SetWalkSpeed()
+	end
+)
+
+local SetWalkSpeed = CreateTextBox(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		PlaceText = "WalkSpeed",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Config
+	},
+	
+	function(text)
+		local number = tonumber(text)
+		if typeof(number) ~= "number" then return end
+		
+		WalkSpeed = number
+	end
+)
+
+-- does not work idk
+local SetJumpPower = CreateTextBox(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		PlaceText = "JumpPower",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Config
+	},
+
+	function(text)
+		local number = tonumber(text)
+		if typeof(number) ~= "number" then return end
+
+		JumpPower = number
+	end
+)
+
+
+local Distance = 20
+local TeleportOn
+local TpConn
+
+local function SetTeleport()
+	TeleportOn = not TeleportOn
+	if TpConn then
+		TpConn:Disconnect()
+	end
+	
+	starterGui:SetCore("SendNotification", {
+		Title = "CoolHub",
+		Text = "Teleporter is: "..tostring(TeleportOn),
+		Icon = "rbxassetid://132917596970416", -- Replace with your image asset ID
+		Duration = 2 -- Duration in seconds
+	})
+	
+	if TeleportOn then
+		TpConn = game.UserInputService.InputBegan:Connect(function(Input, gameProcessed)
+			if gameProcessed then return end
+			
+			if Input.KeyCode == Enum.KeyCode.E then
+				rootPart.CFrame *= CFrame.new(0,0, Distance * -1)
+			end
+		end)
+	end
+end
+
+local TurnTeleport = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		Text = "Teleportation (E)",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		SetTeleport()
+	end
+)
+
+local SetDistance = CreateTextBox(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47,47,47),
+		PlaceText = "TPDistance",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = Config
+	},
+
+	function(text)
+		local number = tonumber(text)
+		if typeof(number) ~= "number" then return end
+
+		Distance = number
+	end
+)
+
+local TSBDASHON
+local TSBCONN
+local Range = 40
+
+local function TSBDASH()
+	TSBDASHON = not TSBDASHON
+	if TSBCONN then
+		TSBCONN:Disconnect()
+	end
+
+	starterGui:SetCore("SendNotification", {
+		Title = "CoolHub",
+		Text = "TSBDASH is: "..tostring(TSBDASHON),
+		Icon = "rbxassetid://132917596970416", -- Replace with your image asset ID
+		Duration = 2 -- Duration in seconds
+	})
+
+	if TSBDASHON then
+		TSBCONN = game.UserInputService.InputBegan:Connect(function(Input, gameProcessed)
+			if gameProcessed then return end
+
+			if Input.KeyCode == Enum.KeyCode.X then
+				task.spawn(function()
+					for i = 1, 10 do
+						local AlreadyEnemy
+
+						for i, v in pairs(workspace:GetDescendants()) do
+							if v.Parent:IsA("Model") and v.Parent:FindFirstChild("Humanoid") then
+								if AlreadyEnemy then continue end
+								AlreadyEnemy = v.Parent
+								local enemyRoot = v.Parent:FindFirstChild("HumanoidRootPart")
+								if enemyRoot then
+									local distance = (rootPart.Position - enemyRoot.Position).Magnitude
+									if distance <= Range then
+										-- Keeps your current position, but rotates to face enemyRoot
+										rootPart.CFrame = CFrame.lookAt(rootPart.Position, enemyRoot.Position)
+									end
+								end
+							end
+						end
+						
+						task.wait(.1)
+					end
+				end)
+			end
+		end)
+	end
+end
+
+local TSBDASHB = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(115, 0, 255),
+		Text = "Tsb loop dash (X)",
+		TextColor = Color3.fromRGB(241, 134, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		TSBDASH()
+	end
+)
+
+
+local RESET = CreateNewButton(
+	{
+		Size = UDim2.new(0.917, 0,0.099, 0),
+		Position = UDim2.new(0.952, 0,0.109,0),
+		Color = Color3.fromRGB(47, 0, 0),
+		Text = "RESET",
+		TextColor = Color3.fromRGB(255, 255, 255),
+		Parent = ButtonList
+	},
+
+	function()
+		humanoid.Health = 0
+	end
+)
+
+-- Drag detector
+local UserInputService = game:GetService("UserInputService")
+
+local frame = Holder
+local isDragging = false
+local dragStartPos = Vector2.new()
+local frameStartPos = UDim2.new()
+
+-- Fires when the player clicks or taps on the frame
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		isDragging = true
+
+		-- Record the initial cursor position and frame position
+		dragStartPos = UserInputService:GetMouseLocation()
+		frameStartPos = frame.Position
+
+		-- Prevent other UI elements from capturing input while dragging
+		local connection
+		connection = input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				isDragging = false
+				connection:Disconnect()
+			end
+		end)
+	end
+end)
+
+-- Listens globally for screen cursor movements while dragging is active
+UserInputService.InputChanged:Connect(function(input)
+	if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local currentMousePos = UserInputService:GetMouseLocation()
+
+		-- Calculate how far the cursor has moved from the drag origin
+		local delta = currentMousePos - dragStartPos
+
+		-- Update the frame's position by adding the pixel offset
+		frame.Position = UDim2.new(
+			frameStartPos.X.Scale,
+			frameStartPos.X.Offset + delta.X,
+			frameStartPos.Y.Scale,
+			frameStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
