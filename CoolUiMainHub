@@ -616,7 +616,7 @@ local camera = workspace.CurrentCamera
 
 -- CONFIGURATION
 local FOV_RADIUS = 150 -- The radius of your aimbot zone in pixels
-local TOGGLE_KEY = Enum.KeyCode.Y-- Middle-click to toggle ON/OFF
+local TOGGLE_KEY = Enum.UserInputType.MouseButton3-- Middle-click to toggle ON/OFF
 local SMOOTHNESS = 0.25 -- Lower = smoother/slower tracking (0.01 to 1)
 
 -- Shared Variables (Scope-lifted out of the button constructor)
